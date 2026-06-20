@@ -85,11 +85,15 @@ class _ChatContentState extends State<ChatContent> {
 
   void _scrollToBottom() {
     if (!widget.scrollController.hasClients) return;
-    widget.scrollController.animateTo(
-      widget.scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutQuart,
-    );
+    // Delay by one frame so the maxScrollExtent is perfectly accurate
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.scrollController.hasClients) return;
+      widget.scrollController.animateTo(
+        widget.scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutQuart,
+      );
+    });
   }
 
   @override
@@ -105,24 +109,36 @@ class _ChatContentState extends State<ChatContent> {
           Column(
             children: [
               const SizedBox(height: headerHeight),
-              Expanded(
-                child: widget.messages.isEmpty
-                    ? const EmptyState()
-                    : ListView.builder(
-                        controller: widget.scrollController,
-                        physics: const BouncingScrollPhysics(
-                          parent: AlwaysScrollableScrollPhysics(),
-                        ),
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.manual,
-                        padding: EdgeInsets.only(
-                          top: 35,
-                          bottom: keyboardInset > 0
-                              ? keyboardInset + inputBarHeight + 16
-                              : inputBarHeight + 16,
-                        ),
-                        itemCount: widget.messages.length,
+                      Expanded(
+                        child: widget.messages.isEmpty
+                            ? AnimatedPadding(
+                                // Matches the speed of the keyboard and our input bar
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeOutCubic,
+                                padding: EdgeInsets.only(bottom: keyboardInset),
+                                child: const EmptyState(),
+                              )
+                            : ListView.builder(
+                                controller: widget.scrollController,
+                                // Change this so the user can easily swipe down to close the keyboard
+                                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                                physics: const BouncingScrollPhysics(
+                                  parent: AlwaysScrollableScrollPhysics(),
+                                ),
+                        // Remove the bottom padding here, keep only top
+                        padding: const EdgeInsets.only(top: 35),
+                        itemCount: widget.messages.length + 1, // +1 for our animated spacer
                         itemBuilder: (context, index) {
+                          // Add the spacer at the very end
+                          if (index == widget.messages.length) {
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOutCubic,
+                              height: keyboardInset > 0
+                                  ? keyboardInset + inputBarHeight + 60
+                                  : inputBarHeight + 30,
+                            );
+                          }
                           return MessageAppear(
                             key: ValueKey(widget.messages[index].id),
                             child: MessageBubble(
@@ -152,7 +168,7 @@ class _ChatContentState extends State<ChatContent> {
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
             right: 20,
-            bottom: keyboardInset + inputBarHeight + 10,
+            bottom: keyboardInset + inputBarHeight + 24,
             child: IgnorePointer(
               ignoring: !_showScrollButton,
               child: AnimatedScale(
@@ -196,7 +212,9 @@ class _ChatContentState extends State<ChatContent> {
           ),
 
           // ── Input bar ─────────────────────────────────────────────────
-          Positioned(
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
             left: 0,
             right: 0,
             bottom: keyboardInset,

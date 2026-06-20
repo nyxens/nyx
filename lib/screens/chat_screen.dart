@@ -92,8 +92,8 @@ class _ChatScreenState extends State<ChatScreen>
       if (!mounted || !_scrollController.hasClients) return;
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 420),
-        curve: Curves.easeOutQuart,
+        duration: force ? const Duration(milliseconds: 420) : const Duration(milliseconds: 80),
+        curve: force ? Curves.easeOutQuart : Curves.linear,
       );
     });
   }
@@ -213,6 +213,14 @@ class _ChatScreenState extends State<ChatScreen>
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
+    // ── 1. Close keyboard & wait for retreat ──────────────────────────────
+    // If the keyboard is open, close it and wait for the animation to finish
+    // (Flutter's keyboard animation takes roughly 250ms, so we wait 300ms to be safe)
+    if (_inputFocusNode.hasFocus) {
+      _inputFocusNode.unfocus();
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
     // Create a conversation if there isn't one active.
     if (_activeConversation == null) {
       await _startNewConversation();
@@ -221,9 +229,7 @@ class _ChatScreenState extends State<ChatScreen>
     final conv = _activeConversation!;
     final isFirstMessage = conv.loadedMessages.isEmpty;
 
-    _inputFocusNode.unfocus();
-
-    // ── User bubble ───────────────────────────────────────────────────────
+    // ── 2. User bubble ────────────────────────────────────────────────────
     final userMsg = ChatMessage(
       id: _uuid.v4(),
       conversationId: conv.id,
@@ -237,8 +243,7 @@ class _ChatScreenState extends State<ChatScreen>
     });
 
     _textController.clear();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => _smallScrollDown());
+    _scrollToBottom(force: true);
 
     // Persist user message.
     await widget.storage.saveMessage(userMsg);
@@ -246,11 +251,11 @@ class _ChatScreenState extends State<ChatScreen>
     // Auto-title on first message.
     if (isFirstMessage) await _autoTitle(conv, text);
 
-    // ── Build context window for LLM ──────────────────────────────────────
-    final context =
-        await widget.storage.buildContextWindow(conv.id);
+    await Future.delayed(const Duration(milliseconds: 350));
+    // ── 3. Build context window for LLM ───────────────────────────────────
+    final context = await widget.storage.buildContextWindow(conv.id);
 
-    // ── Assistant bubble ──────────────────────────────────────────────────
+    // ── 4. Assistant bubble ───────────────────────────────────────────────
     final assistantMsg = ChatMessage(
       id: _uuid.v4(),
       conversationId: conv.id,
@@ -266,7 +271,7 @@ class _ChatScreenState extends State<ChatScreen>
 
     _scrollToBottom(force: true);
 
-    // ── Stream tokens ─────────────────────────────────────────────────────
+    // ── 5. Stream tokens ──────────────────────────────────────────────────
     final stream = widget.llm.streamResponse(
       userMessage: text,
       context: context,
@@ -279,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen>
       _scrollToBottom();
     }
 
-    // ── Finalise ──────────────────────────────────────────────────────────
+    // ── 6. Finalise ───────────────────────────────────────────────────────
     setState(() => assistantMsg.streaming = false);
 
     // Persist the complete assistant message.

@@ -197,15 +197,33 @@ class _GroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: Colors.white30,
-          letterSpacing: .6,
-        ),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: Colors.white38,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(.08),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -239,35 +257,39 @@ class _ConversationTileState extends State<_ConversationTile> {
       child: GestureDetector(
         onLongPress: () => _showDeleteDialog(context),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(
-              horizontal: 8, vertical: 2),
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+            // Give the active tile a beautiful soft purple glow
             color: widget.isActive
-                ? Colors.white.withOpacity(.07)
+                ? const Color(0xff8D6CFF).withOpacity(.12)
                 : _hovering
                     ? Colors.white.withOpacity(.04)
                     : Colors.transparent,
+            border: Border.all(
+              color: widget.isActive
+                  ? const Color(0xff8D6CFF).withOpacity(.25)
+                  : Colors.transparent,
+            ),
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               onTap: widget.onTap,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Row(
                   children: [
                     Icon(
                       Icons.chat_bubble_outline_rounded,
-                      size: 15,
+                      size: 16,
                       color: widget.isActive
                           ? const Color(0xffB388FF)
                           : Colors.white30,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         widget.conversation.title,
@@ -275,25 +297,24 @@ class _ConversationTileState extends State<_ConversationTile> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
-                          color: widget.isActive
-                              ? Colors.white
-                              : Colors.white70,
-                          fontWeight: widget.isActive
-                              ? FontWeight.w500
-                              : FontWeight.w400,
+                          color: widget.isActive ? Colors.white : Colors.white70,
+                          fontWeight: widget.isActive ? FontWeight.w500 : FontWeight.w400,
                         ),
                       ),
                     ),
-                    // Delete button on hover / active
                     if (_hovering || widget.isActive)
                       GestureDetector(
                         onTap: () => _showDeleteDialog(context),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: Icon(
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
                             Icons.delete_outline_rounded,
-                            size: 15,
-                            color: Colors.white24,
+                            size: 14,
+                            color: Colors.white54,
                           ),
                         ),
                       ),
@@ -306,40 +327,139 @@ class _ConversationTileState extends State<_ConversationTile> {
       ),
     );
   }
-
   void _showDeleteDialog(BuildContext context) {
-    showDialog<void>(
+    showGeneralDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xff1A1B22),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete conversation?',
-            style: TextStyle(color: Colors.white, fontSize: 16)),
-        content: const Text(
-          'This cannot be undone.',
-          style: TextStyle(color: Colors.white54, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.white54)),
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withOpacity(0.6),
+      transitionDuration: const Duration(milliseconds: 350),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff1A1B22).withOpacity(0.65),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // ── Animated Icon Container ──
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 146, 16, 233).withOpacity(0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 146, 16, 233).withOpacity(0.2),
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.delete_sweep_rounded,
+                              color: const Color.fromARGB(255, 146, 16, 233),
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                        
+                        const Text(
+                          'Delete conversation?',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 10),
+                        
+                        const Text(
+                          'This action cannot be undone. Are you sure you want to permanently remove this chat?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 28),
+                        
+                        // ── Action Buttons ──
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _GlassDialogButton(
+                                text: 'Cancel',
+                                onTap: () => Navigator.pop(context),
+                                isDestructive: false,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _GlassDialogButton(
+                                text: 'Delete',
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  widget.onDelete();
+                                },
+                                isDestructive: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onDelete();
-            },
-            child: const Text('Delete',
-                style: TextStyle(color: Color(0xffFF6B6B))),
+        );
+      },
+      
+      // ── Custom Pop-in Animation ──
+      transitionBuilder: (context, anim, secondaryAnim, child) {
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+            CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
           ),
-        ],
-      ),
+          child: FadeTransition(
+            opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            ),
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
-
 class _EmptyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -363,54 +483,162 @@ class _EmptyHistory extends StatelessWidget {
   }
 }
 
-class _DrawerFooter extends StatelessWidget {
+// ── 3. Upgraded Footer Control Pill ─────────────────────────────────────────
+class _DrawerFooter extends StatefulWidget {
+  @override
+  State<_DrawerFooter> createState() => _DrawerFooterState();
+}
+
+class _DrawerFooterState extends State<_DrawerFooter> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-          16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(.06)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xff7C4DFF), Color(0xffB388FF)],
-              ),
+              color: Colors.white.withOpacity(.03),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(.08)),
             ),
-            child: const Center(
-              child: Text('N',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Text('Nyx',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
-                Text('Local AI · Offline',
-                    style:
-                        TextStyle(color: Colors.white38, fontSize: 11)),
+                // Glowing Status Dot
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xff4ADE80), // Emerald green
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xff4ADE80).withOpacity(_pulseController.value * 0.6),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                
+                // System Info
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Nyx Engine',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      Text(
+                        'Local Inference Ready',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Placeholder Settings Button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      // TODO: Open settings sheet
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.tune_rounded,
+                        size: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassDialogButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _GlassDialogButton({
+    required this.text,
+    required this.onTap,
+    required this.isDestructive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = isDestructive ? const Color.fromARGB(255, 146, 16, 233) : Colors.white;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: baseColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: baseColor.withOpacity(0.2),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: baseColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

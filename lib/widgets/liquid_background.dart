@@ -26,7 +26,7 @@ class _LiquidBackgroundState extends State<LiquidBackground>
       vsync: this,
       // A longer duration feels organic; value goes 0→1 and we wrap it in sin/cos.
       duration: const Duration(seconds: 30),
-    )..repeat();
+    )..repeat(reverse: true);
   }
 
   @override
