@@ -98,16 +98,6 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
-  void _smallScrollDown() {
-    if (!_scrollController.hasClients) return;
-    final pos = _scrollController.position;
-    _scrollController.animateTo(
-      (pos.pixels + 80).clamp(0.0, pos.maxScrollExtent),
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
   // ── Drawer ────────────────────────────────────────────────────────────────
 
   void _openDrawer() {
