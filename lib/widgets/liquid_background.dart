@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 
@@ -11,34 +10,28 @@ class LiquidBackground extends StatefulWidget {
   });
 
   @override
-  State<LiquidBackground> createState() =>
-      _LiquidBackgroundState();
+  State<LiquidBackground> createState() => _LiquidBackgroundState();
 }
 
-class _LiquidBackgroundState extends State<LiquidBackground> {
-  late final Timer timer;
-
-  double phase = 0;
+class _LiquidBackgroundState extends State<LiquidBackground>
+    with SingleTickerProviderStateMixin {
+  // Using AnimationController instead of Timer.periodic means the animation
+  // is vsync-aligned (no wasted frames, no battery drain when off-screen).
+  late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-
-    timer = Timer.periodic(
-      const Duration(milliseconds: 50), // ~20 fps
-      (_) {
-        phase += .01;
-
-        if (mounted) {
-          setState(() {});
-        }
-      },
-    );
+    _controller = AnimationController(
+      vsync: this,
+      // A longer duration feels organic; value goes 0→1 and we wrap it in sin/cos.
+      duration: const Duration(seconds: 30),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    timer.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -48,20 +41,25 @@ class _LiquidBackgroundState extends State<LiquidBackground> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(
-              painter: MeshPainter(phase),
-            ),
-          ),
-
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Container(
-                color: const Color(0xff090B10)
-                    .withOpacity(.14),
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (_, __) => CustomPaint(
+                // phase goes 0 → 2π continuously.
+                painter: MeshPainter(_controller.value * 2 * pi),
               ),
             ),
           ),
 
+          // Subtle dark overlay to keep text readable.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                color: const Color(0xff090B10).withOpacity(.14),
+              ),
+            ),
+          ),
+
+          // Vignette gradient — heavier at the bottom where UI lives.
           Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
@@ -70,22 +68,13 @@ class _LiquidBackgroundState extends State<LiquidBackground> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xff090B10)
-                          .withOpacity(.05),
+                      const Color(0xff090B10).withOpacity(.05),
                       Colors.transparent,
-                      const Color(0xff090B10)
-                          .withOpacity(.15),
-                      const Color(0xff090B10)
-                          .withOpacity(.55),
+                      const Color(0xff090B10).withOpacity(.15),
+                      const Color(0xff090B10).withOpacity(.55),
                       const Color(0xff090B10),
                     ],
-                    stops: const [
-                      0,
-                      .15,
-                      .6,
-                      .85,
-                      1,
-                    ],
+                    stops: const [0, .15, .6, .85, 1],
                   ),
                 ),
               ),
@@ -100,7 +89,7 @@ class _LiquidBackgroundState extends State<LiquidBackground> {
 }
 
 class MeshPainter extends CustomPainter {
-  final double p;
+  final double p; // phase in radians (0 → 2π)
 
   MeshPainter(this.p);
 
@@ -147,37 +136,16 @@ class MeshPainter extends CustomPainter {
     );
   }
 
-  void _drawGlow(
-    Canvas canvas,
-    Offset center,
-    double radius,
-    Color color,
-  ) {
-    final rect = Rect.fromCircle(
-      center: center,
-      radius: radius,
-    );
-
+  void _drawGlow(Canvas canvas, Offset center, double radius, Color color) {
+    final rect = Rect.fromCircle(center: center, radius: radius);
     final paint = Paint()
       ..shader = RadialGradient(
-        colors: [
-          color,
-          color.withOpacity(.35),
-          Colors.transparent,
-        ],
+        colors: [color, color.withOpacity(.35), Colors.transparent],
       ).createShader(rect);
-
-    canvas.drawCircle(
-      center,
-      radius,
-      paint,
-    );
+    canvas.drawCircle(center, radius, paint);
   }
 
   @override
-  bool shouldRepaint(
-    covariant MeshPainter oldDelegate,
-  ) {
-    return oldDelegate.p != p;
-  }
+  bool shouldRepaint(covariant MeshPainter oldDelegate) =>
+      oldDelegate.p != p;
 }

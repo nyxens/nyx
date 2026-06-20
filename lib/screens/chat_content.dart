@@ -1,10 +1,10 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../models/chat_message.dart';
 import '../widgets/animated_input_bar.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/message_appear.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/nyx_header.dart';
 
@@ -15,6 +15,8 @@ class ChatContent extends StatefulWidget {
   final List<ChatMessage> messages;
   final bool isThinking;
   final VoidCallback send;
+  final VoidCallback? onMenuTap;
+  final VoidCallback? onNewChat;
 
   const ChatContent({
     super.key,
@@ -24,95 +26,108 @@ class ChatContent extends StatefulWidget {
     required this.messages,
     required this.isThinking,
     required this.send,
+    this.onMenuTap,
+    this.onNewChat,
   });
 
   @override
   State<ChatContent> createState() => _ChatContentState();
 }
 
-class _ChatContentState extends State<ChatContent>
-    with WidgetsBindingObserver {
-  double _lastInset = 0;
-  bool showScrollButton = false;
+class _ChatContentState extends State<ChatContent> {
+  bool _showScrollButton = false;
+  double _lastKeyboardInset = 0;
 
   @override
   void initState() {
     super.initState();
+    widget.scrollController.addListener(_onScroll);
+  }
 
-    widget.scrollController.addListener(() {
-      if (!widget.scrollController.hasClients) return;
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    super.dispose();
+  }
 
-      final pos = widget.scrollController.position;
-
-      final distanceFromBottom =
-          pos.maxScrollExtent - pos.pixels;
-
-      final visible = distanceFromBottom > 50;
-
-      if (visible != showScrollButton) {
-        setState(() {
-          showScrollButton = visible;
-        });
-      }
-    });
+  void _onScroll() {
+    if (!widget.scrollController.hasClients) return;
+    final pos = widget.scrollController.position;
+    final dist = pos.maxScrollExtent - pos.pixels;
+    final visible = dist > 80;
+    if (visible != _showScrollButton) {
+      setState(() => _showScrollButton = visible);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
     final inset = MediaQuery.of(context).viewInsets.bottom;
 
-    // if (inset > _lastInset) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     if (!widget.scrollController.hasClients) return;
+    if (inset > _lastKeyboardInset &&
+        widget.scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.scrollController.hasClients) return;
+        final pos = widget.scrollController.position;
+        if ((pos.maxScrollExtent - pos.pixels) < 300) {
+          widget.scrollController.animateTo(
+            pos.maxScrollExtent,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      });
+    }
 
-    //     final pos = widget.scrollController.position;
+    _lastKeyboardInset = inset;
+  }
 
-    //     if ((pos.maxScrollExtent - pos.pixels) < 300) {
-    //       widget.scrollController.animateTo(
-    //         pos.maxScrollExtent - 30 ,
-    //         duration: const Duration(
-    //           milliseconds: 100,
-    //         ),
-    //         curve: Curves.easeOutQuart,
-    //       );
-    //     }
-    //   });
-    // }
-    _lastInset = inset;
+  void _scrollToBottom() {
+    if (!widget.scrollController.hasClients) return;
+    widget.scrollController.animateTo(
+      widget.scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutQuart,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    const inputBarHeight = 76.0;
+    const headerHeight = 105.0;
 
     return SafeArea(
       child: Stack(
         children: [
+          // ── Message list ───────────────────────────────────────────────
           Column(
             children: [
-              const SizedBox(
-                height: 105,
-              ),
+              const SizedBox(height: headerHeight),
               Expanded(
                 child: widget.messages.isEmpty
                     ? const EmptyState()
                     : ListView.builder(
                         controller: widget.scrollController,
-                        physics: const BouncingScrollPhysics(),
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
                         keyboardDismissBehavior:
                             ScrollViewKeyboardDismissBehavior.manual,
                         padding: EdgeInsets.only(
                           top: 35,
-                          bottom: keyboardHeight > 0
-                              ? keyboardHeight + 110
-                              : 100,
+                          bottom: keyboardInset > 0
+                              ? keyboardInset + inputBarHeight + 16
+                              : inputBarHeight + 16,
                         ),
                         itemCount: widget.messages.length,
                         itemBuilder: (context, index) {
-                          return MessageBubble(
-                            message: widget.messages[index],
+                          return MessageAppear(
+                            key: ValueKey(widget.messages[index].id),
+                            child: MessageBubble(
+                              message: widget.messages[index],
+                            ),
                           );
                         },
                       ),
@@ -120,56 +135,48 @@ class _ChatContentState extends State<ChatContent>
             ],
           ),
 
-          const Positioned(
+          // ── Header ────────────────────────────────────────────────────
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: Center(
-              child: NyxHeader(),
+            child: NyxHeader(
+              active: widget.isThinking,
+              onMenuTap: widget.onMenuTap,
+              onNewChat: widget.onNewChat,
             ),
           ),
 
-          Positioned(
+          // ── Scroll-to-bottom button ────────────────────────────────────
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
             right: 20,
-            bottom: keyboardHeight + 110,
+            bottom: keyboardInset + inputBarHeight + 10,
             child: IgnorePointer(
-              ignoring: !showScrollButton,
+              ignoring: !_showScrollButton,
               child: AnimatedScale(
-                duration: const Duration(
-                  milliseconds: 200,
-                ),
-                curve: Curves.easeOut,
-                scale: showScrollButton ? 1 : .7,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutBack,
+                scale: _showScrollButton ? 1.0 : 0.6,
                 child: AnimatedOpacity(
-                  duration: const Duration(
-                    milliseconds: 200,
-                  ),
-                  opacity: showScrollButton ? 1 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _showScrollButton ? 1.0 : 0.0,
                   child: GestureDetector(
-                    onTap: () {
-                      widget.scrollController.animateTo(
-                        widget.scrollController.position.maxScrollExtent,
-                        duration: const Duration(
-                          milliseconds: 500,
-                        ),
-                        curve: Curves.easeOutQuart,
-                      );
-                    },
+                    onTap: _scrollToBottom,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(100),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: 20,
-                          sigmaY: 20,
-                        ),
+                        filter:
+                            ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                         child: Container(
                           width: 46,
                           height: 46,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.03),
+                            color: Colors.white.withOpacity(.05),
                             borderRadius: BorderRadius.circular(100),
                             border: Border.all(
-                              color: Colors.white.withOpacity(.06),
+                              color: Colors.white.withOpacity(.10),
                             ),
                           ),
                           child: const Center(
@@ -188,24 +195,16 @@ class _ChatContentState extends State<ChatContent>
             ),
           ),
 
+          // ── Input bar ─────────────────────────────────────────────────
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
-            child: AnimatedPadding(
-              duration: const Duration(
-                milliseconds: 220,
-              ),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.only(
-                bottom: keyboardHeight,
-              ),
-              child: AnimatedInputBar(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                send: widget.send,
-                busy: widget.isThinking,
-              ),
+            bottom: keyboardInset,
+            child: AnimatedInputBar(
+              controller: widget.controller,
+              focusNode: widget.focusNode,
+              send: widget.send,
+              busy: widget.isThinking,
             ),
           ),
         ],
